@@ -74,15 +74,15 @@ namespace Project.Tools.DictionaryHelp
                     var hasRepeated = false;
                     var repeatedKeys = new List<string>();
 
-                    for (int i = 0; i < dictionaryList.arraySize; i++)
+                    for (int i = 0; i < dictionaryLists[prop.propertyPath].arraySize; i++)
                     {
-                        SerializedProperty isKeyRepeatedProperty = dictionaryList.GetArrayElementAtIndex(i)
+                        SerializedProperty isKeyRepeatedProperty = dictionaryLists[prop.propertyPath].GetArrayElementAtIndex(i)
                                                                            .FindPropertyRelative("isKeyDuplicated");
 
                         if (isKeyRepeatedProperty.boolValue)
                         {
                             hasRepeated = true;
-                            SerializedProperty keyProperty = dictionaryList.GetArrayElementAtIndex(i).FindPropertyRelative("Key");
+                            SerializedProperty keyProperty = dictionaryLists[prop.propertyPath].GetArrayElementAtIndex(i).FindPropertyRelative("Key");
                             string keyString = GetSerializedPropertyValueAsString(keyProperty);
                             repeatedKeys.Add(keyString);
                         }
@@ -141,7 +141,7 @@ namespace Project.Tools.DictionaryHelp
                 indentedRect.y += indentedRect.height - newHeight;
                 indentedRect.height = newHeight;
 
-                reorderableList.DoList(indentedRect);
+                reorderableLists[prop.propertyPath].DoList(indentedRect);
             }
 
             SetupProps(prop);
@@ -159,15 +159,15 @@ namespace Project.Tools.DictionaryHelp
             if (prop.isExpanded)
             {
                 SetupList(prop);
-                height += reorderableList.GetHeight() + 5;
+                height += reorderableLists[prop.propertyPath].GetHeight() + 5;
             }
 
             return height;
         }
 
-        private float GetListElementHeight(int index)
+        private float GetListElementHeight(int index, SerializedProperty prop)
         {
-            var kvpProp = dictionaryList.GetArrayElementAtIndex(index);
+            var kvpProp = dictionaryLists[prop.propertyPath].GetArrayElementAtIndex(index);
             var keyProp = kvpProp.FindPropertyRelative("Key");
             var valueProp = kvpProp.FindPropertyRelative("Value");
 
@@ -193,13 +193,13 @@ namespace Project.Tools.DictionaryHelp
             return Mathf.Max(GetPropertyHeight(keyProp), GetPropertyHeight(valueProp));
         }
 
-        void DrawListElement(Rect rect, int index, bool isActive, bool isFocused)
+        void DrawListElement(Rect rect, int index, bool isActive, bool isFocused, SerializedProperty prop)
         {
             Rect keyRect;
             Rect valueRect;
             Rect dividerRect;
 
-            var kvpProp = dictionaryList.GetArrayElementAtIndex(index);
+            var kvpProp = dictionaryLists[prop.propertyPath].GetArrayElementAtIndex(index);
             var keyProp = kvpProp.FindPropertyRelative("Key");
             var valueProp = kvpProp.FindPropertyRelative("Value");
 
@@ -309,7 +309,7 @@ namespace Project.Tools.DictionaryHelp
 
                 if (isDividerDragged && Event.current != null && Event.current.type == EventType.MouseDrag)
                 {
-                    dividerPosProp.floatValue = Mathf.Clamp(dividerPosProp.floatValue + Event.current.delta.x / rect.width, .2f, .8f);
+                    dividerPosProps[prop.propertyPath].floatValue = Mathf.Clamp(dividerPosProps[prop.propertyPath].floatValue + Event.current.delta.x / rect.width, .2f, .8f);
                 }
             }
 
@@ -346,37 +346,40 @@ namespace Project.Tools.DictionaryHelp
 
         private void SetupList(SerializedProperty prop)
         {
-            if (reorderableList != null)
+            if (reorderableLists.ContainsKey(prop.propertyPath))
             {
                 return;
             }
 
             SetupProps(prop);
 
-            this.reorderableList = new ReorderableList(dictionaryList.serializedObject, dictionaryList, true, false, true, true);
-            this.reorderableList.drawElementCallback = DrawListElement;
-            this.reorderableList.elementHeightCallback = GetListElementHeight;
-            this.reorderableList.drawNoneElementCallback = ShowDictIsEmptyMessage;
+            var list = new ReorderableList(dictionaryLists[prop.propertyPath].serializedObject, dictionaryLists[prop.propertyPath], true, false, true, true);
+
+            this.reorderableLists.Add(prop.propertyPath, list);
+            list.drawElementCallback = (r,i,a,f) => DrawListElement(r,i,a,f,prop);
+            list.elementHeightCallback = (i) => GetListElementHeight(i, prop);
+            list.drawNoneElementCallback = ShowDictIsEmptyMessage;
         }
 
-        private ReorderableList reorderableList;
+        private Dictionary<string, ReorderableList> reorderableLists = new Dictionary<string, ReorderableList>();
         private bool isDividerDragged;
 
         public void SetupProps(SerializedProperty prop)
         {
-            if (this.property != null)
+            if (this.properties.ContainsKey(prop.propertyPath))
             {
                 return;
             }
 
-            this.property = prop;
-            this.dictionaryList = prop.FindPropertyRelative("dictionaryList");
-            this.dividerPosProp = prop.FindPropertyRelative("dividerPos");
+            //this.properties[prop.propertyPath] = prop;
+            this.properties.Add(prop.propertyPath, prop);
+            this.dictionaryLists.Add(prop.propertyPath, prop.FindPropertyRelative("dictionaryList"));
+            this.dividerPosProps.Add(prop.propertyPath, prop.FindPropertyRelative("dividerPos"));
         }
 
-        private SerializedProperty property;
-        private SerializedProperty dictionaryList;
-        private SerializedProperty dividerPosProp;
+        private Dictionary<string, SerializedProperty> properties = new Dictionary<string, SerializedProperty>();
+        private Dictionary<string, SerializedProperty> dictionaryLists = new Dictionary<string, SerializedProperty>();
+        private Dictionary<string, SerializedProperty> dividerPosProps = new Dictionary<string, SerializedProperty>();
     }
 }
 #endif
