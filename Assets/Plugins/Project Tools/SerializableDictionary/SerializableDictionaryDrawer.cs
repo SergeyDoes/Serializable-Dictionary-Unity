@@ -130,12 +130,17 @@ namespace Project.Tools.DictionaryHelp
 
             void List()
             {
+                // Setup list to draw when new element added to a
+                // list of SerializableDictionary with Inspector
+                // Otherwise new elements will use default drawers
+                // when new element is added while not expanded
+                // (starting from ~16th item in list)
+                SetupList(prop);
+
                 if (!prop.isExpanded)
                 {
                     return;
                 }
-
-                SetupList(prop);
 
                 float newHeight = indentedRect.height - EditorGUIUtility.singleLineHeight - 3;
                 indentedRect.y += indentedRect.height - newHeight;
@@ -356,11 +361,12 @@ namespace Project.Tools.DictionaryHelp
             var list = new ReorderableList(dictionaryLists[prop.propertyPath].serializedObject, dictionaryLists[prop.propertyPath], true, false, true, true);
 
             this.reorderableLists.Add(prop.propertyPath, list);
-            list.drawElementCallback = (r,i,a,f) => DrawListElement(r,i,a,f,prop);
+            list.drawElementCallback = (r, i, a, f) => DrawListElement(r, i, a, f, prop);
             list.elementHeightCallback = (i) => GetListElementHeight(i, prop);
             list.drawNoneElementCallback = ShowDictIsEmptyMessage;
         }
 
+        // Per-property data to avoid duplicating when drew within Reorderable List
         private Dictionary<string, ReorderableList> reorderableLists = new Dictionary<string, ReorderableList>();
         private bool isDividerDragged;
 
@@ -371,12 +377,12 @@ namespace Project.Tools.DictionaryHelp
                 return;
             }
 
-            //this.properties[prop.propertyPath] = prop;
             this.properties.Add(prop.propertyPath, prop);
             this.dictionaryLists.Add(prop.propertyPath, prop.FindPropertyRelative("dictionaryList"));
             this.dividerPosProps.Add(prop.propertyPath, prop.FindPropertyRelative("dividerPos"));
         }
 
+        // Per-property data to avoid duplicating when drew within Reorderable List
         private Dictionary<string, SerializedProperty> properties = new Dictionary<string, SerializedProperty>();
         private Dictionary<string, SerializedProperty> dictionaryLists = new Dictionary<string, SerializedProperty>();
         private Dictionary<string, SerializedProperty> dividerPosProps = new Dictionary<string, SerializedProperty>();
